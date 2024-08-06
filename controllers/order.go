@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"micro/dtos"
 	"micro/models"
 	"micro/services"
 	"net/http"
@@ -38,7 +39,7 @@ func CancelOrder(c *gin.Context) {
 		}
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, order)
 }
 
@@ -52,4 +53,13 @@ func CheckOrderStatus(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, order)
+}
+
+func DeliveryOrder(c *gin.Context) {
+	var paymentPayload dtos.PaymentPayload
+	c.BindJSON(&paymentPayload)
+
+	response := services.DeliveryOrder(paymentPayload)
+
+	c.JSON(http.StatusOK, response)
 }

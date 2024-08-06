@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"micro/database"
+	"micro/dtos"
 	"micro/models"
 	"micro/repositories"
 	"net/http"
@@ -57,9 +59,6 @@ func CreateOrder(order models.Order) (models.Order, error) {
 
 	if paymentRes.Status == string(models.StatusConfirmed) {
 		order.State = models.StateConfirmed
-
-		go moveOrderToDelivered(order.ID, 10*time.Second)
-
 	} else {
 		order.State = models.StateCancelled
 	}
@@ -99,15 +98,18 @@ func GetOrderStatus(id string) (models.Order, error) {
 	return repositories.GetOrderById(id)
 }
 
-func moveOrderToDelivered(orderID uint, duration time.Duration) {
-	time.Sleep(duration)
-	order, err := repositories.GetOrderById(string(rune(orderID)))
-	if err != nil {
-		return
+func DeliveryOrder(paymentPayload dtos.PaymentPayload) dtos.OrderResponse {
+	if paymentPayload.Status == string(models.StatusConfirmed) {
+		time.AfterFunc(10*time.Second, func() {
+			var order models.Order
+			database.OrderDB.Where("id = ?", paymentPayload.OrderID).First(&order)
+
+			if order.State == models.StateConfirmed {
+				order.State = models.StateDelivered
+				database.OrderDB.Save(&order)
+			}
+		})
 	}
 
-	if order.State == models.StateConfirmed {
-		order.State = models.StateDelivered
-		repositories.UpdateOrder(&order)
-	}
+	return dtos.OrderResponse{Message: "Order updated"}
 }

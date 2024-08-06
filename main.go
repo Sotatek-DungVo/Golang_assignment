@@ -24,6 +24,7 @@ func orderRouter() http.Handler {
 	e.POST("/orders", controllers.CreateOrder)
 	e.PUT("/orders/:id/cancel", controllers.CancelOrder)
 	e.GET("/orders/:id/status", controllers.CheckOrderStatus)
+	e.POST("/orders/delivery", controllers.DeliveryOrder)
 
 	return e
 }
@@ -44,41 +45,44 @@ func main() {
 	}
 
 	database.ConnectOrderDB(
-		os.Getenv("ORDER_DB_HOST"),
-		os.Getenv("ORDER_DB_USERNAME"),
-		os.Getenv("ORDER_DB_USER_PASSWORD"),
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_USERNAME"),
+		os.Getenv("DB_USER_PASSWORD"),
 		os.Getenv("ORDER_DB_NAME"),
 		os.Getenv("DB_PORT"),
 	)
 
 	database.ConnectPaymentDB(
-		os.Getenv("PAYMENT_DB_HOST"),
-		os.Getenv("PAYMENT_DB_USERNAME"),
-		os.Getenv("PAYMENT_DB_USER_PASSWORD"),
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_USERNAME"),
+		os.Getenv("DB_USER_PASSWORD"),
 		os.Getenv("PAYMENT_DB_NAME"),
 		os.Getenv("DB_PORT"),
 	)
 
-	server01 := &http.Server{
-		Addr:         ":8081",
+	orderPort := os.Getenv("ORDER_PORT")
+	paymentPort := os.Getenv("PAYMENT_PORT")
+
+	orderServer := &http.Server{
+		Addr:         ":" + orderPort,
 		Handler:      orderRouter(),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 
-	server02 := &http.Server{
-		Addr:         ":8082",
+	paymentServer := &http.Server{
+		Addr:         ":" + paymentPort,
 		Handler:      paymentRouter(),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 
 	g.Go(func() error {
-		return server01.ListenAndServe()
+		return orderServer.ListenAndServe()
 	})
 
 	g.Go(func() error {
-		return server02.ListenAndServe()
+		return paymentServer.ListenAndServe()
 	})
 
 	if err := g.Wait(); err != nil {
